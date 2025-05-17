@@ -21,28 +21,42 @@ export async function POST(request: Request) {
       )
     }
 
-    const prompt = `You job is to help me extract job details from a job listing from ${url}.
-    You will be given a URL and you will need to give me the job details from the listing.
-    You will need to extract the following details:
-    - Company name
-    - Job title (e.g. "Software Engineer", "Product Manager", "Data Scientist", etc.)
-    - Salary (e.g. "$100,000 - $120,000", "$120,000 - $140,000", etc.)
-    - Source (e.g. "LinkedIn", "Indeed", "Glassdoor", etc.)
+    const prompt = `Your task is to extract structured job information from the webpage at ${url}.
+    Access the URL and analyze the content to identify key job details.
 
-    The output should be a JSON object with the following fields:
-    If you are not able to find the job details, return "cannot find job details".
+Return ONLY a valid JSON object with these fields:
+
 {
-  "company": "Company name, remove suffixes like Inc/LLC if possible",
-  "title": "Full job title exactly as listed. Most likely the title is the first thing in the listing or a header.",
-  "salary": "Look for a point which says compensation or salary. Should have a number and a currency. Standardized format: $X-$Y or 'Not disclosed'",
-  "source": "Domain name of source (e.g., linkedin.com, indeed.com)"
+  "company": "Company name (omit legal suffixes like Inc/LLC/Ltd unless part of brand identity)",
+  "title": "Complete job title as displayed, preserving case and punctuation",
+  "salary": "Compensation in standardized format: '$X-$Y/year' or '$X/hour' or null if not found",
+  "source": "Domain name without 'www.' (e.g. 'linkedin.com', 'indeed.com')"
 }
 
-Guidelines:
-- Do not paraphrase the job title, company name, or salary.
-- For missing information, use null instead of empty strings
-- Keep text fields concise, under 100 characters when possible
-- If salary data includes multiple formats, prioritize annual figures.`
+## Extraction Guidelines:
+
+### Company
+- Look in page headers, "About Company" sections, or next to company logos
+- For job boards, distinguish between posting company and job board itself
+- Prefer full name over abbreviations (e.g., "Microsoft" not "MS")
+
+### Title
+- Typically the largest text on page or first H1/H2 element or the ur metadata title.
+- Include the entire title including level/seniority indicators
+- Preserve special characters and formatting (e.g., "Sr. Software Engineer (Python/React)")
+
+### Salary
+- Search for terms: "salary", "compensation", "pay", "$", "€", "£"
+- If multiple formats exist (hourly/annual), prioritize annual rate
+- Convert ranges to "$X-$Y/year" format
+- If salary shows as "Competitive" or similar vague terms, use null
+
+### Source
+- Extract domain from URL without subdomain or path
+- For multi-platform jobs (posted on multiple sites), use the current URL's domain
+
+If you cannot find specific information after thorough examination, 
+use null for that field. Do not guess or invent information not present in the source.`
 
     const response = await fetch(OPENROUTER_API_URL, {
       method: "POST",
@@ -51,8 +65,12 @@ Guidelines:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "openai/gpt-4",
+        model: "anthropic/claude-3.5-sonnet",
         messages: [
+          {
+            role: "system",
+            content: 'You are a specialized job listing parser. Extract structured data from job listings accurately.Focus only on factual information present in the content. Return valid JSON only'
+          },
           {
             role: "user",
             content: prompt,
@@ -71,12 +89,21 @@ Guidelines:
     console.log(data)
 
     try {
+      // First try to parse the content as JSON
       const jobDetails = JSON.parse(content)
-      return NextResponse.json({
-        ...jobDetails,
-        link: url, // Always include the original URL
-      })
+      
+      // Map the response fields to match our expected format
+      const mappedJobDetails = {
+        company: jobDetails.company || null,
+        role: jobDetails.title || null, // Map 'title' to 'role'
+        salary: jobDetails.salary || null,
+        source: jobDetails.source || null,
+        link: url,
+      }
+
+      return NextResponse.json(mappedJobDetails)
     } catch (e) {
+      console.error("Failed to parse job details:", content)
       return NextResponse.json(
         { error: "Failed to parse job details from API response" },
         { status: 500 }

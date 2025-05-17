@@ -86,10 +86,10 @@ export function AddJobDialog({ open, onOpenChange, onAddJob, initialStatus = "Sa
           status: "Saved",
           salary: jobDetails.salary || "",
           source: jobDetails.source || "",
-          link: url,
+          link: jobDetails.link || url,
           dateApplied: "",
           contact: "",
-          notes: `Imported from ${url}`,
+          notes: `Imported from ${jobDetails.link || url}`,
           documents: [],
         })
       } catch (err) {
