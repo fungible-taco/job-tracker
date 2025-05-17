@@ -32,7 +32,6 @@ export async function POST(request: Request) {
 Guidelines:
 - For missing information, use null instead of empty strings
 - Keep text fields concise, under 100 characters when possible
-- For requirements, capture only the 3-5 most important ones
 - If salary data includes multiple formats, prioritize annual figures.`
 
     const response = await fetch(OPENROUTER_API_URL, {
