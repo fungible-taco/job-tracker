@@ -89,7 +89,7 @@ export function AddJobDialog({ open, onOpenChange, onAddJob, initialStatus = "Sa
           link: url,
           dateApplied: "",
           contact: "",
-          notes: "Imported from URL",
+          notes: `Imported from ${url}`,
           documents: [],
         })
       } catch (err) {
