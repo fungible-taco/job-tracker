@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { JobData } from "@/types/job"
 import { DocumentSelector } from "@/components/document-selector"
+import { extractJobDetailsFromUrl } from "@/lib/openrouter"
 
 interface AddJobDialogProps {
   open: boolean
@@ -23,6 +24,8 @@ interface AddJobDialogProps {
 export function AddJobDialog({ open, onOpenChange, onAddJob, initialStatus = "Saved" }: AddJobDialogProps) {
   const [activeTab, setActiveTab] = useState("manual")
   const [url, setUrl] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [job, setJob] = useState<Partial<JobData>>({
     company: "",
     role: "",
@@ -48,7 +51,7 @@ export function AddJobDialog({ open, onOpenChange, onAddJob, initialStatus = "Sa
     setJob({ ...job, [field]: value })
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (activeTab === "manual") {
@@ -69,22 +72,32 @@ export function AddJobDialog({ open, onOpenChange, onAddJob, initialStatus = "Sa
         documents: job.documents || [],
       })
     } else if (activeTab === "url" && url) {
-      // In a real implementation, this would call an API to scrape the job details
-      // For now, we'll just create a basic job with the URL
-      onAddJob({
-        id: Date.now().toString(),
-        company: "Company from URL",
-        role: "Position from URL",
-        location: "",
-        status: "Saved",
-        salary: "",
-        source: "URL Import",
-        link: url,
-        dateApplied: "",
-        contact: "",
-        notes: "Imported from URL",
-        documents: [],
-      })
+      setIsLoading(true)
+      setError(null)
+      
+      try {
+        const jobDetails = await extractJobDetailsFromUrl(url)
+        
+        onAddJob({
+          id: Date.now().toString(),
+          company: jobDetails.company || "",
+          role: jobDetails.role || "",
+          location: "",
+          status: "Saved",
+          salary: jobDetails.salary || "",
+          source: jobDetails.source || "",
+          link: url,
+          dateApplied: "",
+          contact: "",
+          notes: "Imported from URL",
+          documents: [],
+        })
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to extract job details")
+        return
+      } finally {
+        setIsLoading(false)
+      }
     }
 
     // Reset form
@@ -249,14 +262,23 @@ export function AddJobDialog({ open, onOpenChange, onAddJob, initialStatus = "Sa
                 <p className="text-sm text-gray-500 mt-1">
                   Paste the URL of the job posting to automatically extract details
                 </p>
+                {error && (
+                  <p className="text-sm text-red-500 mt-1">
+                    {error}
+                  </p>
+                )}
               </div>
 
               <div className="flex justify-end gap-2 pt-4">
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" className="bg-emerald-500 hover:bg-emerald-600">
-                  Import Job
+                <Button 
+                  type="submit" 
+                  className="bg-emerald-500 hover:bg-emerald-600"
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Importing..." : "Import Job"}
                 </Button>
               </div>
             </form>
