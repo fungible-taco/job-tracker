@@ -1,0 +1,258 @@
+"use client"
+
+import type React from "react"
+
+import { useState } from "react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import type { JobData } from "@/types/job"
+
+interface AddJobDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onAddJob: (job: JobData) => void
+}
+
+export function AddJobDialog({ open, onOpenChange, onAddJob }: AddJobDialogProps) {
+  const [activeTab, setActiveTab] = useState("manual")
+  const [url, setUrl] = useState("")
+  const [job, setJob] = useState<Partial<JobData>>({
+    company: "",
+    role: "",
+    location: "",
+    status: "Saved",
+    salary: "",
+    source: "",
+    link: "",
+    dateApplied: "",
+    contact: "",
+    notes: "",
+    documents: [],
+  })
+
+  const handleChange = (field: keyof JobData, value: string) => {
+    setJob({ ...job, [field]: value })
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (activeTab === "manual") {
+      if (!job.company || !job.role) return
+
+      onAddJob({
+        id: Date.now().toString(),
+        company: job.company || "",
+        role: job.role || "",
+        location: job.location || "",
+        status: job.status || "Saved",
+        salary: job.salary || "",
+        source: job.source || "",
+        link: job.link || "",
+        dateApplied: job.dateApplied || "",
+        contact: job.contact || "",
+        notes: job.notes || "",
+        documents: job.documents || [],
+      })
+    } else if (activeTab === "url" && url) {
+      // In a real implementation, this would call an API to scrape the job details
+      // For now, we'll just create a basic job with the URL
+      onAddJob({
+        id: Date.now().toString(),
+        company: "Company from URL",
+        role: "Position from URL",
+        location: "",
+        status: "Saved",
+        salary: "",
+        source: "URL Import",
+        link: url,
+        dateApplied: "",
+        contact: "",
+        notes: "Imported from URL",
+        documents: [],
+      })
+    }
+
+    // Reset form
+    setJob({
+      company: "",
+      role: "",
+      location: "",
+      status: "Saved",
+      salary: "",
+      source: "",
+      link: "",
+      dateApplied: "",
+      contact: "",
+      notes: "",
+      documents: [],
+    })
+    setUrl("")
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>Add New Job</DialogTitle>
+        </DialogHeader>
+
+        <Tabs defaultValue="manual" value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsTrigger value="manual">Manual Entry</TabsTrigger>
+            <TabsTrigger value="url">Import from URL</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="manual">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="company">Company *</Label>
+                  <Input
+                    id="company"
+                    value={job.company}
+                    onChange={(e) => handleChange("company", e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="role">Role/Position *</Label>
+                  <Input id="role" value={job.role} onChange={(e) => handleChange("role", e.target.value)} required />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="location">Location</Label>
+                  <Input
+                    id="location"
+                    value={job.location}
+                    onChange={(e) => handleChange("location", e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="status">Status</Label>
+                  <Select value={job.status} onValueChange={(value) => handleChange("status", value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Saved">Saved</SelectItem>
+                      <SelectItem value="Applied">Applied</SelectItem>
+                      <SelectItem value="Interview">Interview</SelectItem>
+                      <SelectItem value="Assignment">Assignment</SelectItem>
+                      <SelectItem value="Offer">Offer</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="salary">Salary Range</Label>
+                  <Input id="salary" value={job.salary} onChange={(e) => handleChange("salary", e.target.value)} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="source">Source</Label>
+                  <Input
+                    id="source"
+                    value={job.source}
+                    onChange={(e) => handleChange("source", e.target.value)}
+                    placeholder="LinkedIn, Indeed, etc."
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="link">Job Link</Label>
+                  <Input
+                    id="link"
+                    value={job.link}
+                    onChange={(e) => handleChange("link", e.target.value)}
+                    placeholder="https://"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="dateApplied">Date Applied</Label>
+                  <Input
+                    id="dateApplied"
+                    type="date"
+                    value={job.dateApplied}
+                    onChange={(e) => handleChange("dateApplied", e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="contact">Contact Person</Label>
+                <Input
+                  id="contact"
+                  value={job.contact}
+                  onChange={(e) => handleChange("contact", e.target.value)}
+                  placeholder="Name, title, email, etc."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notes</Label>
+                <Textarea
+                  id="notes"
+                  value={job.notes}
+                  onChange={(e) => handleChange("notes", e.target.value)}
+                  placeholder="Additional details, interview notes, etc."
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" className="bg-emerald-500 hover:bg-emerald-600">
+                  Add Job
+                </Button>
+              </div>
+            </form>
+          </TabsContent>
+
+          <TabsContent value="url">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="jobUrl">Job Posting URL</Label>
+                <Input
+                  id="jobUrl"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://example.com/job-posting"
+                  required
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  Paste the URL of the job posting to automatically extract details
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" className="bg-emerald-500 hover:bg-emerald-600">
+                  Import Job
+                </Button>
+              </div>
+            </form>
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
+  )
+}
